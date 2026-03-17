@@ -54,7 +54,6 @@ services:
       litellm:
         condition: service_started
     ports:
-      - "80:80"
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

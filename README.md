@@ -23,6 +23,8 @@ Caddy variants live under `caddy/`:
 - `caddy/docker-compose-mac.yml`
 - `caddy/docker-compose-linux.yml`
 
+All compose variants publish only `443`. Port `80` is intentionally not exposed so API clients cannot accidentally send bearer tokens over cleartext HTTP before a redirect.
+
 ## Shared Environment
 
 Create `.env` from `.env.example` and set these values before first start:
@@ -78,6 +80,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\trust-selfsigned-cert.ps1
 ```powershell
 docker compose -f caddy/docker-compose-win.yml up -d
 powershell -ExecutionPolicy Bypass -File .\scripts\trust-caddy-root.ps1
+
+Use `https://localhost` for all browser and API traffic. Do not point SDKs, curl, or reverse proxies at `http://localhost`.
 ```
 
 ## macOS
@@ -108,6 +112,8 @@ docker compose -f docker-compose-mac.yml up -d
 
 ```bash
 docker compose -f caddy/docker-compose-mac.yml up -d
+
+Use `https://localhost` for all browser and API traffic. Do not point SDKs, curl, or reverse proxies at `http://localhost`.
 ```
 
 For macOS Caddy trust, import the local Caddy root CA into Keychain after the stack starts. On Windows there is a helper script; on macOS you can export the Caddy root from the container and trust it manually.
@@ -137,6 +143,8 @@ docker compose -f docker-compose-linux.yml up -d
 
 ```bash
 docker compose -f caddy/docker-compose-linux.yml up -d
+
+Use `https://localhost` for all browser and API traffic. Do not point SDKs, curl, or reverse proxies at `http://localhost`.
 ```
 
 4. If Linux host firewalling is enabled, allow only the Docker host or the specific trusted subnet to reach Ollama on `11434`.
@@ -148,12 +156,14 @@ nginx self-signed stacks:
 - terminate HTTPS with `certs/server.crt` and `certs/server.key`
 - auto-generate the cert pair on first start if missing
 - use `scripts/trust-selfsigned-cert.ps1` on Windows to trust the cert
+- require clients to trust the self-signed certificate before strict HTTPS validation will succeed
 
 Caddy stacks:
 
 - terminate HTTPS with `tls internal`
 - generate and manage a local Caddy root CA automatically
 - use `scripts/trust-caddy-root.ps1` on Windows to trust the Caddy CA
+- require clients to trust the Caddy root CA before strict HTTPS validation will succeed
 
 ## Admin UI And Keys
 
@@ -175,6 +185,8 @@ curl -sk https://localhost/key/generate \
   -H 'Content-Type: application/json' \
   -d '{"models":["ollama/llama3.2"],"duration":"30d"}'
 ```
+
+The `-k` flag is acceptable only for ad hoc local testing. For normal use, install or trust the local CA and let clients validate HTTPS normally.
 
 ## Ollama Reachability
 

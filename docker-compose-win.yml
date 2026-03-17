@@ -97,7 +97,6 @@ services:
       certgen:
         condition: service_completed_successfully
     ports:
-      - "80:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
