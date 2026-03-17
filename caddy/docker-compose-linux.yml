@@ -1,0 +1,77 @@
+name: litellm-ollama-proxy-linux-caddy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-litellm}
+      POSTGRES_USER: ${POSTGRES_USER:-litellm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-postgres-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm} -d ${POSTGRES_DB:-litellm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  litellm:
+    image: docker.litellm.ai/berriai/litellm-database:main-stable
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["--config", "/app/config.yaml", "--host", "0.0.0.0", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-change-this-key}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:-change-this-salt-key}
+      UI_USERNAME: ${UI_USERNAME:-admin}
+      UI_PASSWORD: ${UI_PASSWORD:-change-this-ui-password}
+      PROXY_BASE_URL: ${PROXY_BASE_URL:-https://localhost}
+      LITELLM_UI_SESSION_DURATION: ${LITELLM_UI_SESSION_DURATION:-24h}
+      STORE_MODEL_IN_DB: ${STORE_MODEL_IN_DB:-True}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-change-this-postgres-password}@postgres:5432/${POSTGRES_DB:-litellm}
+      OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../litellm/config.yaml:/app/config.yaml:ro
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000', timeout=5)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      litellm:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - backend
+
+networks:
+  backend:
+
+volumes:
+  postgres_data:
+    name: litellm-ollama-proxy-linux-postgres-data
+  caddy_data:
+    name: litellm-ollama-proxy-linux-caddy-data
+  caddy_config:
+    name: litellm-ollama-proxy-linux-caddy-config

@@ -1,31 +1,41 @@
-name: litellm-ollama-proxy-selfsigned
+name: litellm-ollama-proxy-win-selfsigned
 
 services:
-  ollama:
-    image: ollama/ollama:latest
+  postgres:
+    image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      OLLAMA_KEEP_ALIVE: 24h
+      POSTGRES_DB: ${POSTGRES_DB:-litellm}
+      POSTGRES_USER: ${POSTGRES_USER:-litellm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-postgres-password}
     volumes:
-      - ollama_data:/root/.ollama
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-litellm} -d ${POSTGRES_DB:-litellm}"]
+      interval: 10s
+      timeout: 5s
       retries: 20
-      start_period: 30s
+      start_period: 10s
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: docker.litellm.ai/berriai/litellm-database:main-stable
     restart: unless-stopped
     depends_on:
-      ollama:
-        condition: service_started
+      postgres:
+        condition: service_healthy
     command: ["--config", "/app/config.yaml", "--host", "0.0.0.0", "--port", "4000"]
     environment:
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-change-this-key}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-change-this-key}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:-change-this-salt-key}
+      UI_USERNAME: ${UI_USERNAME:-admin}
+      UI_PASSWORD: ${UI_PASSWORD:-change-this-ui-password}
+      PROXY_BASE_URL: ${PROXY_BASE_URL:-https://localhost}
+      LITELLM_UI_SESSION_DURATION: ${LITELLM_UI_SESSION_DURATION:-24h}
+      STORE_MODEL_IN_DB: ${STORE_MODEL_IN_DB:-True}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-change-this-postgres-password}@postgres:5432/${POSTGRES_DB:-litellm}
+      OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
     networks:
@@ -78,23 +88,20 @@ services:
     volumes:
       - ./certs:/certs
 
-  caddy:
-    image: caddy:2
+  nginx:
+    image: nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
       litellm:
         condition: service_started
       certgen:
         condition: service_completed_successfully
-    environment:
-      SELF_SIGNED_CERT_CN: ${SELF_SIGNED_CERT_CN:-host.example.com}
     ports:
+      - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile.selfsigned:/etc/caddy/Caddyfile:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/certs:ro
-      - caddy_data:/data
-      - caddy_config:/config
     networks:
       - backend
 
@@ -102,6 +109,5 @@ networks:
   backend:
 
 volumes:
-  ollama_data:
-  caddy_data:
-  caddy_config:
+  postgres_data:
+    name: litellm-ollama-proxy-win-postgres-data

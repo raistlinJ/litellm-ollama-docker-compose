@@ -12,17 +12,14 @@ https://localhost, https://127.0.0.1 {
     Referrer-Policy no-referrer
   }
 
-  @openai_api path /v1/*
-  handle @openai_api {
-    reverse_proxy litellm:4000
-  }
+  @root path /
+  redir @root /ui/ 302
 
-  handle {
-    respond "Not found" 404
-  }
+  @ui_no_slash path /ui
+  redir @ui_no_slash /ui/ 302
 
-  log {
-    output stdout
-    format console
-  }
+  @ui_login_no_slash path /ui/login
+  redir @ui_login_no_slash /ui/login/ 302
+
+  reverse_proxy litellm:4000
 }

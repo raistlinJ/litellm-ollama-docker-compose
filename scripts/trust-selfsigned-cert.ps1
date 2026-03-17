@@ -4,7 +4,7 @@ $projectRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $certPath = Join-Path $projectRoot "certs\server.crt"
 
 if (-not (Test-Path $certPath)) {
-    throw "Certificate not found at $certPath. Start docker-compose-selfsigned.yml first."
+    throw "Certificate not found at $certPath. Start one of the self-signed docker-compose-<os>.yml stacks first."
 }
 
 Import-Certificate -FilePath $certPath -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
