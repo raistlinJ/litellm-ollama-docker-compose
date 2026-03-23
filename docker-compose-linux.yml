@@ -95,7 +95,7 @@ services:
     restart: unless-stopped
     depends_on:
       litellm:
-        condition: service_started
+        condition: service_healthy
       certgen:
         condition: service_completed_successfully
     ports:
