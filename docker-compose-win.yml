@@ -35,7 +35,10 @@ services:
       LITELLM_UI_SESSION_DURATION: ${LITELLM_UI_SESSION_DURATION:-24h}
       STORE_MODEL_IN_DB: ${STORE_MODEL_IN_DB:-True}
       DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-change-this-postgres-password}@postgres:5432/${POSTGRES_DB:-litellm}
+      # Docker Desktop normally resolves host.docker.internal, and the extra host keeps parity with Linux.
       OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./litellm/config.yaml:/app/config.yaml:ro
     networks:

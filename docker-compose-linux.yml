@@ -35,6 +35,7 @@ services:
       LITELLM_UI_SESSION_DURATION: ${LITELLM_UI_SESSION_DURATION:-24h}
       STORE_MODEL_IN_DB: ${STORE_MODEL_IN_DB:-True}
       DATABASE_URL: postgresql://${POSTGRES_USER:-litellm}:${POSTGRES_PASSWORD:-change-this-postgres-password}@postgres:5432/${POSTGRES_DB:-litellm}
+      # Linux needs an explicit host-gateway mapping so LiteLLM can reach a host-installed Ollama.
       OLLAMA_API_BASE: ${OLLAMA_API_BASE:-http://host.docker.internal:11434}
     extra_hosts:
       - "host.docker.internal:host-gateway"
